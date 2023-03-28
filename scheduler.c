@@ -36,27 +36,28 @@
 /**********************************************************************/
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <ctype.h>
 #include <math.h>
 
 /**********************************************************************/
 /*                         Symbolic Constants                         */
 /**********************************************************************/
-#define HEADER_ALLOC_ERR  1   /* Header memory alloc error        */
-#define INITIAL_CPU       0   /* No CPU time used yet             */
-#define INITIAL_PID       1   /* PID of first process             */
-#define INITIAL_PRI       0   /* Initial process priority         */
-#define INITIAL_QUANTUM   0   /* No quantum used yet              */
-#define INITIAL_STATE     'R' /* Initial process state (Ready)    */
-#define INITIAL_TICKS     0   /* Process not waiting for CPU      */
+#define HEADER_ALLOC_ERR  1   /* Header memory alloc error            */
+#define INITIAL_CPU       0   /* No CPU time used yet                 */
+#define INITIAL_PID       1   /* PID of first process                 */
+#define INITIAL_PRI       0   /* Initial process priority             */
+#define INITIAL_QUANTUM   0   /* No quantum used yet                  */
+#define INITIAL_STATE     'R' /* Initial process state (Ready)        */
+#define INITIAL_TICKS     0   /* Process not waiting for CPU          */
 #define LIST_HEADER       MIN_PID - 1 
-                              /* Lowest possible pid minus one    */
+                              /* Lowest possible pid minus one        */
 #define LIST_TRAILER      MAX_PID + 1 
-                              /* Highest possible pid plus one    */
-#define MAX_PID           100 /* Highest possbile pid             */
-#define MIN_PID           1   /* Lowest possible pid              */
-#define PROCESS_ALLOC_ERR 3   /* Process memory alloc error       */
-#define TRAILER_ALLOC_ERR 2   /* Trailer memory alloc error       */
+                              /* Highest possible pid plus one        */
+#define MAX_PID           100 /* Highest possbile pid                 */
+#define MIN_PID           1   /* Lowest possible pid                  */
+#define PROCESS_ALLOC_ERR 3   /* Process memory alloc error           */
+#define TRAILER_ALLOC_ERR 2   /* Trailer memory alloc error           */
 
 
 /**********************************************************************/
@@ -81,20 +82,52 @@ typedef struct process_record PROCESS;
 /**********************************************************************/
 /*                         Function Prototypes                        */
 /**********************************************************************/
+void printTables(PROCESS *p_process_list);
 PROCESS* create_process_list();
    /* Create an empty process list with a valid header and trailer    */
-void initialize_program(PROCESS process);
+void initialize_scheduler(PROCESS *p_process_list);
    /* Initialize and populate a process table                         */
+void insert_process(PROCESS *p_process_list, int pid);
+   /* Insert a new process at the beginning of the process list       */
 int calculate_priority(int old_priority, int quantum_used);
    /* Recalculate the priority of the runNing process                 */
+int count_processes(PROCESS *p_process_list);
+   /* Counts all account records                                      */
 
 /**********************************************************************/
 /*                            Main Function                           */
 /**********************************************************************/
 int main()
 {
+   PROCESS *p_process_list = create_process_list();
 
+   printf("\n\n\n\n\n\n");
+   initialize_scheduler(p_process_list);
+   printTables(p_process_list);
+
+   printf("\n\n\n\n\n\n");
    return 0;
+}
+
+/**********************************************************************/
+/*              Print the BEFORE and AFTER process tables             */
+/**********************************************************************/
+void printTables(PROCESS *p_process_list)
+{
+   printf("BEFORE SCHEDULING CPU: Next PID = %d, Number of Processes = %d\n",
+          p_process_list->p_next_process->p_next_process->pid, count_processes(p_process_list));
+   printf("PID   CPU Used   MAX Time   State   PRI   QUANTUM USED    BLK TIME   WAIT TKS\n");
+
+   while (p_process_list = p_process_list->p_next_process,
+          p_process_list->pid != LIST_TRAILER)
+   {
+      printf(" %2d       %2d         %2d        %c       %d         %d            %d           %d\n",
+             p_process_list->pid, p_process_list->cpu_used, p_process_list->max_time,
+             p_process_list->state, p_process_list->priority, p_process_list->quantum_used,
+             p_process_list->block_time, p_process_list->wait_ticks);
+   }
+
+   return;
 }
 
 /**********************************************************************/
@@ -124,7 +157,7 @@ PROCESS* create_process_list()
       exit(TRAILER_ALLOC_ERR);
    }
    p_process_list->p_next_process->pid = LIST_TRAILER;
-   p_process_list->p_next_process->pid = NULL;
+   p_process_list->p_next_process->p_next_process = NULL;
 
    return p_process_list;
 }
@@ -162,7 +195,7 @@ void insert_process(PROCESS *p_process_list, int pid)
    p_new_process->quantum_used = INITIAL_QUANTUM;
    p_new_process->wait_ticks   = INITIAL_TICKS;
    p_new_process->state        = INITIAL_STATE;
-   p_new_process->p_next_process = p_new_process;
+   p_process_list->p_next_process = p_new_process;
 
    return;
 }
@@ -170,9 +203,15 @@ void insert_process(PROCESS *p_process_list, int pid)
 /**********************************************************************/
 /*               Initialize and populate a process table              */
 /**********************************************************************/
-void initialize_program(PROCESS process)
+void initialize_scheduler(PROCESS *p_process_list)
 {
-   
+   int process_counter;
+
+   for(process_counter = 5; process_counter >= MIN_PID; process_counter--)
+   {
+      insert_process(p_process_list, process_counter);
+   }
+
    return;
 }
 
@@ -182,4 +221,17 @@ void initialize_program(PROCESS process)
 int calculate_priority(int old_priority, int quantum_used)
 {
    return (abs(old_priority) + quantum_used)/2;
+}
+
+/**********************************************************************/
+/*                   Counts all account records                       */
+/**********************************************************************/
+int count_processes(PROCESS *p_process_list)
+{
+   int total_processes = 0; /* Number of processes in the table        */
+
+   while (p_process_list = p_process_list->p_next_process,
+          p_process_list->pid != LIST_TRAILER)
+      total_processes += 1;
+   return total_processes;
 }
