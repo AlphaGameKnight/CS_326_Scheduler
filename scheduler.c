@@ -59,7 +59,6 @@
 #define PROCESS_ALLOC_ERR 3   /* Process memory alloc error           */
 #define TRAILER_ALLOC_ERR 2   /* Trailer memory alloc error           */
 
-
 /**********************************************************************/
 /*                         Program Structures                         */
 /**********************************************************************/
@@ -82,10 +81,8 @@ typedef struct process_record PROCESS;
 /**********************************************************************/
 /*                         Function Prototypes                        */
 /**********************************************************************/
-void printBefore(PROCESS *p_process_list);
-   /* Print the BEFORE process table                                  */
-void printAfter(PROCESS *p_process_list);
-   /* Print the AFTER process table                                   */
+void printTables(PROCESS *p_process_list, char *p_table);
+   /* Print the BEFORE and AFTER process tables                       */
 PROCESS* create_process_list();
    /* Create an empty process list with a valid header and trailer    */
 void initialize_scheduler(PROCESS *p_process_list);
@@ -100,6 +97,10 @@ void check_max_time(PROCESS *p_process_list);
    /* Remove process that has reached its max CPU time                */
 void check_blocked(PROCESS *p_process_list);
    /* Check if a blocked process needs to be unblocked                */
+void check_time(PROCESS *p_process_list, int clock_ticks);
+   /* Check if a process needs to block                               */
+void check_preemption(PROCESS *p_process_list);
+   /* Check if a process needs to be preempted                        */
 
 /**********************************************************************/
 /*                            Main Function                           */
@@ -110,19 +111,24 @@ int main()
            *p_process_list,     /* Points to an process list          */
            *p_process,          /* Points to an process in the list   */
            *p_previous_account; /* Points to previous process         */
+   char    before[] = "BEFORE", /* Lable for BEFORE process table     */
+           after[]  = "AFTER";  /* Label for AFTER process table      */
+   int     clock_ticks = 1;     /* Number of clock ticks used         */
 
    p_process_list = create_process_list();
    p_process = p_process_list;
 
    printf("\n\n\n\n\n\n");
    initialize_scheduler(p_process_list);
-   printBefore(p_process_list);
-   printAfter(p_process_list);
+   printTables(p_process_list, before);
+   printTables(p_process_list, after);
 
    while (p_process->p_next_process->pid != LIST_TRAILER)
    {
       check_blocked(p_process_list);
       check_max_time(p_process_list);
+      
+      clock_ticks++;
    }
 
    printf("\n\n\n\n\n\n");
@@ -130,12 +136,14 @@ int main()
 }
 
 /**********************************************************************/
-/*                   Print the BEFORE process table                   */
+/*             Print the BEFORE and AFTER process tables              */
 /**********************************************************************/
-void printBefore(PROCESS *p_process_list)
+void printTables(PROCESS *p_process_list, char *p_table)
 {
-   printf("BEFORE SCHEDULING CPU: Next PID = %d, Number of Processes = %d\n",
-          p_process_list->p_next_process->p_next_process->p_next_process->
+   PROCESS *p_next_process;
+
+   printf("%s SCHEDULING CPU: Next PID = %d, Number of Processes = %d\n",
+          p_table, p_process_list->p_next_process->p_next_process->p_next_process->
           p_next_process->p_next_process->pid + 1,
           count_processes(p_process_list));
    printf("PID   CPU Used   MAX Time   STATE   PRI   QUANTUM USED    BLK TIME   WAIT TKS\n");
@@ -149,29 +157,6 @@ void printBefore(PROCESS *p_process_list)
              p_process_list->block_time, p_process_list->wait_ticks);
    }
    printf("\n");
-
-   return;
-}
-
-/**********************************************************************/
-/*                    Print the AFTER process table                   */
-/**********************************************************************/
-void printAfter(PROCESS *p_process_list)
-{
-   printf("AFTER SCHEDULING CPU: Next PID = %d, Number of Processes = %d\n",
-          p_process_list->p_next_process->p_next_process->p_next_process->
-          p_next_process->p_next_process->pid + 1,
-          count_processes(p_process_list));
-   printf("PID   CPU Used   MAX Time   STATE   PRI   QUANTUM USED    BLK TIME   WAIT TKS\n");
-
-   while (p_process_list = p_process_list->p_next_process,
-          p_process_list->pid != LIST_TRAILER)
-   {
-      printf(" %2d      %2d         %2d        %c       %d         %d            %d           %d\n",
-             p_process_list->pid, p_process_list->cpu_used, p_process_list->max_time,
-             p_process_list->state, p_process_list->priority, p_process_list->quantum_used,
-             p_process_list->block_time, p_process_list->wait_ticks);
-   }
 
    return;
 }
@@ -278,7 +263,10 @@ int count_processes(PROCESS *p_process_list)
 
    while (p_process_list = p_process_list->p_next_process,
           p_process_list->pid != LIST_TRAILER)
+   {
       total_processes += 1;
+   }
+
    return total_processes;
 }
 
@@ -322,11 +310,60 @@ void check_blocked(PROCESS *p_process_list)
    p_process = p_process_list;
    while (p_process->p_next_process->pid != LIST_TRAILER)
    {
-      if (p_process->state = 'B' && ((rand() % 20 + 1) == 1))
+      if (p_process->state == 'B' && ((rand() % 20 + 1) == 1))
       {
          p_process->state = 'R';
       }
 
       p_process = p_process->p_next_process;
    }
+   
+   return;
+}
+
+/**********************************************************************/
+/*                 Check if a process needs to block                  */
+/**********************************************************************/
+void check_time(PROCESS *p_process_list, int clock_ticks)
+{
+   PROCESS *p_process; /* Points to a process                         */
+
+   p_process = p_process_list;
+   while (p_process->p_next_process->pid != LIST_TRAILER)
+   {
+      if (p_process->cpu_used == p_process->block_time)
+      {
+         p_process->state = 'B';
+      }
+
+      p_process = p_process->p_next_process;
+   }
+
+   return;
+}
+
+/**********************************************************************/
+/*              Check if a process needs to be preempted              */
+/**********************************************************************/
+void check_preemption(PROCESS *p_process_list)
+{
+   PROCESS *p_process, /* Points to one process                       */
+           *p_previous_process;
+                       /* Points to the process before p_process      */
+
+   p_previous_process = p_process_list;
+   p_process = p_previous_process->p_next_process;
+
+   while (p_process->p_next_process->pid != LIST_TRAILER)
+   {
+      if (p_process->state == 'B' || p_process->quantum_used == p_process->block_time)
+      {
+         calculate_priority(p_process->block_time, p_process->quantum_used);
+         // STUB: CALL SORT CODE HERE
+      }
+
+      p_previous_process = p_process;
+   }
+
+      return;
 }
