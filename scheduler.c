@@ -99,6 +99,8 @@ void check_blocked(PROCESS *p_process_list);
    /* Check if a blocked process needs to be unblocked                */
 void check_time(PROCESS *p_process_list, int clock_ticks);
    /* Check if a process needs to block                               */
+void sort_processes(PROCESS* p_process_list, int number_of_processes);
+   /* Sorts the processes by their priority                           */
 void check_preemption(PROCESS *p_process_list);
    /* Check if a process needs to be preempted                        */
 
@@ -339,6 +341,45 @@ void check_time(PROCESS *p_process_list, int clock_ticks)
       p_process = p_process->p_next_process;
    }
 
+   return;
+}
+
+/**********************************************************************/
+/*               Sorts the processes by their priority                */
+/**********************************************************************/
+void sort_processes(PROCESS* p_process_list, int number_of_processes)
+{
+   int  counter;       /* Number of times through the list            */
+   PROCESS *p_process, /* Points to a process in the account list     */
+           *p_temp;    /* Temp process pointer for a swap             */
+
+   for (counter = 1; counter <= number_of_processes - 1; counter++)
+   {
+      p_process = p_process_list;
+      while (p_process->p_next_process->p_next_process->priority 
+                                                         != LIST_TRAILER)
+      {
+         if (p_process->p_next_process->priority < INITIAL_PRI)
+         {
+            // STUB: Need to handle negative priorities
+         }
+         else
+         {
+            if (p_process->p_next_process->priority >
+            p_process->p_next_process->p_next_process->priority)
+            {
+               p_temp                    = p_process->p_next_process->p_next_process;
+               p_process->p_next_process->p_next_process 
+                                         = 
+                  p_process->p_next_process->p_next_process->p_next_process;
+               p_temp->p_next_process    = p_process->p_next_process;
+               p_process->p_next_process = p_temp;
+            }
+         }
+         
+         p_process = p_process->p_next_process;
+      }
+   }
    return;
 }
 
