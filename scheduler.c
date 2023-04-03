@@ -58,6 +58,8 @@
 #define MIN_PID           1   /* Lowest possible pid                  */
 #define PROCESS_ALLOC_ERR 3   /* Process memory alloc error           */
 #define TRAILER_ALLOC_ERR 2   /* Trailer memory alloc error           */
+#define BEFORE            "BEFORE"
+#define AFTER             "AFTER"
 
 /**********************************************************************/
 /*                         Program Structures                         */
@@ -101,8 +103,14 @@ void check_time(PROCESS *p_process_list, int clock_ticks);
    /* Check if a process needs to block                               */
 void sort_processes(PROCESS* p_process_list, int number_of_processes);
    /* Sorts the processes by their priority                           */
+void schedule_process(PROCESS *p_process_list);
+   /* Schedule a process to run                                       */
 void check_preemption(PROCESS *p_process_list);
    /* Check if a process needs to be preempted                        */
+void add_process(PROCESS *p_process_list);
+   /* Add a new process to the process table                          */
+int get_next_pid(PROCESS *p_process_list);
+   /* Get the biggest PID in the process table                        */
 
 /**********************************************************************/
 /*                            Main Function                           */
@@ -113,26 +121,31 @@ int main()
            *p_process_list,     /* Points to an process list          */
            *p_process,          /* Points to an process in the list   */
            *p_previous_account; /* Points to previous process         */
-   char    before[] = "BEFORE", /* Lable for BEFORE process table     */
-           after[]  = "AFTER";  /* Label for AFTER process table      */
-   int     clock_ticks = 1;     /* Number of clock ticks used         */
+   int     clock_ticks = 1,     /* Number of clock ticks by scheduler */
+           pid = 1;
 
    p_process_list = create_process_list();
    p_process = p_process_list;
 
    printf("\n\n\n\n\n\n");
    initialize_scheduler(p_process_list);
-   printTables(p_process_list, before);
-   printTables(p_process_list, after);
-
-   while (p_process->p_next_process->pid != LIST_TRAILER)
+   printTables(p_process_list, BEFORE);
+   
+   while (get_next_pid(p_process_list) < 10)
    {
-      check_blocked(p_process_list);
-      check_max_time(p_process_list);
-      
-      clock_ticks++;
-   }
+      if (count_processes(p_process_list) < 10)
+      {
+         add_process(p_process_list);
+         schedule_process(p_process_list, pid);
+      }
 
+      check_blocked(p_process_list);
+      clock_ticks++;
+      printf("\n%d\n", clock_ticks);
+   }
+   printf("\n%d\n", clock_ticks);
+   
+   printTables(p_process_list, AFTER);
    printf("\n\n\n\n\n\n");
    return 0;
 }
@@ -142,11 +155,10 @@ int main()
 /**********************************************************************/
 void printTables(PROCESS *p_process_list, char *p_table)
 {
-   PROCESS *p_next_process;
+   PROCESS *p_process; /* Points to an process in the process list    */
 
    printf("%s SCHEDULING CPU: Next PID = %d, Number of Processes = %d\n",
-          p_table, p_process_list->p_next_process->p_next_process->p_next_process->
-          p_next_process->p_next_process->pid + 1,
+          p_table, get_next_pid(p_process_list),
           count_processes(p_process_list));
    printf("PID   CPU Used   MAX Time   STATE   PRI   QUANTUM USED    BLK TIME   WAIT TKS\n");
 
@@ -240,7 +252,7 @@ void initialize_scheduler(PROCESS *p_process_list)
 {
    int process_counter;
 
-   for(process_counter = 5; process_counter >= MIN_PID; process_counter--)
+   for(process_counter = 5; process_counter >= 1; process_counter--)
    {
       insert_process(p_process_list, process_counter);
    }
@@ -291,11 +303,14 @@ void check_max_time(PROCESS *p_process_list)
          p_previous_process->p_next_process = p_process->p_next_process;
 
          free(p_process);
+         printTables(p_process_list, BEFORE);
+         printTables(p_process_list, AFTER);
       }
       else
       {
          p_previous_process = p_process;
       }
+      p_process = p_process->p_next_process;
    }
       
 
@@ -315,6 +330,8 @@ void check_blocked(PROCESS *p_process_list)
       if (p_process->state == 'B' && ((rand() % 20 + 1) == 1))
       {
          p_process->state = 'R';
+         printTables(p_process_list, BEFORE);
+         printTables(p_process_list, AFTER);
       }
 
       p_process = p_process->p_next_process;
@@ -331,11 +348,15 @@ void check_time(PROCESS *p_process_list, int clock_ticks)
    PROCESS *p_process; /* Points to a process                         */
 
    p_process = p_process_list;
+
    while (p_process->p_next_process->pid != LIST_TRAILER)
    {
       if (p_process->cpu_used == p_process->block_time)
       {
          p_process->state = 'B';
+         p_process->priority -= 1;
+         printTables(p_process_list, BEFORE);
+         printTables(p_process_list, AFTER);
       }
 
       p_process = p_process->p_next_process;
@@ -349,37 +370,99 @@ void check_time(PROCESS *p_process_list, int clock_ticks)
 /**********************************************************************/
 void sort_processes(PROCESS* p_process_list, int number_of_processes)
 {
-   int  counter;       /* Number of times through the list            */
-   PROCESS *p_process, /* Points to a process in the account list     */
-           *p_temp;    /* Temp process pointer for a swap             */
+   int  counter;        /* Number of times through the list           */
+   PROCESS *p_process,  /* Points to a process in the account list    */
+           *p_temp,     /* Temp process pointer for a swap            */
+           *p_negative, /* Points to negative priority process list   */
+           *p_temp_negative,
+           *p_negative_process;
+   
+   p_negative = create_process_list();
 
    for (counter = 1; counter <= number_of_processes - 1; counter++)
    {
       p_process = p_process_list;
-      while (p_process->p_next_process->p_next_process->priority 
-                                                         != LIST_TRAILER)
+      
+      while (p_process->p_next_process->p_next_process->pid 
+                                                        != LIST_TRAILER)
       {
-         if (p_process->p_next_process->priority < INITIAL_PRI)
-         {
-            // STUB: Need to handle negative priorities
-         }
-         else
-         {
-            if (p_process->p_next_process->priority >
+        if (p_process->p_next_process->priority >
             p_process->p_next_process->p_next_process->priority)
-            {
-               p_temp                    = p_process->p_next_process->p_next_process;
-               p_process->p_next_process->p_next_process 
-                                         = 
-                  p_process->p_next_process->p_next_process->p_next_process;
-               p_temp->p_next_process    = p_process->p_next_process;
-               p_process->p_next_process = p_temp;
-            }
+         {
+            p_temp                    = p_process->p_next_process->p_next_process;
+            p_process->p_next_process->p_next_process 
+                                      = 
+               p_process->p_next_process->p_next_process->p_next_process;
+            p_temp->p_next_process    = p_process->p_next_process;
+            p_process->p_next_process = p_temp;
          }
          
          p_process = p_process->p_next_process;
       }
    }
+
+   // Starts hooking up negative priority processes to negative list
+   if(p_process_list->p_next_process->priority < INITIAL_PRI)
+   {
+      p_process = p_process_list;
+      p_negative_process = p_negative;
+      p_temp    = p_negative->p_next_process; // storing trailer location
+      p_negative_process->p_next_process = p_process->p_next_process;
+      while (p_negative_process->p_next_process->priority < INITIAL_PRI)
+      {
+         p_negative_process = p_negative_process->p_next_process;
+      }
+      p_temp_negative = p_negative_process->p_next_process; // storing location of priority 0
+      p_negative_process->p_next_process = p_temp; // connects to the negative trailer
+
+      // sorting negative priorities
+      for (counter = 1; counter <= count_processes(p_negative) - 1; counter++)
+      {
+         p_negative_process = p_negative;
+         
+         while (p_negative_process->p_next_process->p_next_process->pid 
+                                                         != LIST_TRAILER)
+         {
+            if (abs(p_negative_process->p_next_process->priority) >
+                abs(p_negative_process->p_next_process->p_next_process->priority))
+            {
+               p_temp                     = p_negative_process->p_next_process->p_next_process;
+               p_negative_process->p_next_process->p_next_process 
+                                          = 
+                  p_negative_process->p_next_process->p_next_process->p_next_process;
+               p_temp->p_next_process     = p_negative_process->p_next_process;
+               p_negative_process->p_next_process = p_temp;
+            }   
+            p_negative_process = p_negative->p_next_process;
+         }
+      }
+   }
+   
+   return;
+}
+
+/**********************************************************************/
+/*                     Schedule a process to run                      */
+/**********************************************************************/
+void schedule_process(PROCESS *p_process_list)
+{
+   PROCESS *p_process;
+
+   p_process = p_process_list;
+   
+   while (p_process-> p_next_process->pid != LIST_TRAILER)
+   {
+      if(p_process->p_next_process->state == 'R')
+      {
+         p_process->p_next_process->state = 'N';
+         printTables(p_process_list, BEFORE);
+         printTables(p_process_list, AFTER);
+      }
+
+      p_process = p_process->p_next_process;
+   }
+   
+
    return;
 }
 
@@ -388,23 +471,63 @@ void sort_processes(PROCESS* p_process_list, int number_of_processes)
 /**********************************************************************/
 void check_preemption(PROCESS *p_process_list)
 {
-   PROCESS *p_process, /* Points to one process                       */
-           *p_previous_process;
-                       /* Points to the process before p_process      */
+   PROCESS *p_process; /* Points to one process                       */
 
-   p_previous_process = p_process_list;
-   p_process = p_previous_process->p_next_process;
+   p_process =  p_process_list;
 
    while (p_process->p_next_process->pid != LIST_TRAILER)
    {
       if (p_process->state == 'B' || p_process->quantum_used == p_process->block_time)
       {
-         calculate_priority(p_process->block_time, p_process->quantum_used);
-         // STUB: CALL SORT CODE HERE
+         p_process->priority = calculate_priority(p_process->block_time, p_process->quantum_used);
+         sort_processes(p_process_list, count_processes(p_process_list));
+         printTables(p_process_list, BEFORE);
+         printTables(p_process_list, AFTER);
       }
-
-      p_previous_process = p_process;
+      p_process = p_process->p_next_process;
    }
 
       return;
+}
+
+/**********************************************************************/
+/*              Add a new process to the process table                */
+/**********************************************************************/
+void add_process(PROCESS *p_process_list)
+{
+   int new_pid;        /* PID of the new process                      */
+   PROCESS *p_process; /* Points to one process                       */
+
+   if (rand() % 5 + 1 == 1)
+   {
+      insert_process(p_process_list, get_next_pid(p_process_list));
+      printTables(p_process_list, BEFORE);
+      printTables(p_process_list, AFTER);
+   }
+
+   return;
+}
+
+/**********************************************************************/
+/*              Get the biggest PID in the process table              */
+/**********************************************************************/
+int get_next_pid(PROCESS *p_process_list)
+{
+   PROCESS *p_process;
+   int max_pid;
+   
+   max_pid = 0;
+
+   p_process = p_process_list;
+
+   while (p_process->p_next_process->pid != LIST_TRAILER)
+   {
+      if (max_pid < p_process->p_next_process->pid)
+      {
+         max_pid = p_process->p_next_process->pid;
+      }
+      p_process = p_process->p_next_process;
+   }
+
+   return max_pid + 1;
 }

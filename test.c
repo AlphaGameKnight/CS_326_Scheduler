@@ -30,9 +30,9 @@ int main()
    //}
 
    int x = 1;
-   for(int i = 0; i < 20; i++)
+   for(int i = 0; i < 5; i++)
    {
-      if ((rand() % 20 + 1) == 1)
+      if ((rand() % 5 + 1) == 1)
       {
          printf("\n\nooga booga %d\n", x);
       }
