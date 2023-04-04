@@ -43,6 +43,8 @@
 /**********************************************************************/
 /*                         Symbolic Constants                         */
 /**********************************************************************/
+#define BLOCKED           'B' /* Process state is Blocked             */
+#define FALSE             0   /* Constant for a false value           */
 #define HEADER_ALLOC_ERR  1   /* Header memory alloc error            */
 #define INITIAL_CPU       0   /* No CPU time used yet                 */
 #define INITIAL_PID       1   /* PID of first process                 */
@@ -57,7 +59,10 @@
 #define MAX_PID           99  /* Highest possbile pid                 */
 #define MIN_PID           1   /* Lowest possible pid                  */
 #define PROCESS_ALLOC_ERR 3   /* Process memory alloc error           */
+#define READY             'R' /* Process state is Ready               */
+#define RUNNING           'N' /* Process state is ruNning             */
 #define TRAILER_ALLOC_ERR 2   /* Trailer memory alloc error           */
+#define TRUE              1   /* Constant for a true value            */
 #define BEFORE            "BEFORE"
 #define AFTER             "AFTER"
 
@@ -84,17 +89,19 @@ typedef struct process_record PROCESS;
 /*                         Function Prototypes                        */
 /**********************************************************************/
 void printTables(PROCESS *p_process_list, char *p_table);
-   /* Print the BEFORE and AFTER process tables                       */
+   /* Print the process table                                         */
 PROCESS* create_process_list();
    /* Create an empty process list with a valid header and trailer    */
 void initialize_scheduler(PROCESS *p_process_list);
    /* Initialize and populate a process table                         */
+int check_if_running(PROCESS *p_process_list);
+   /* Check if a process is running                                   */
 void insert_process(PROCESS *p_process_list, int pid);
    /* Insert a new process at the beginning of the process list       */
 int calculate_priority(int old_priority, int quantum_used);
    /* Recalculate the priority of the runNing process                 */
 int count_processes(PROCESS *p_process_list);
-   /* Count all account records                                       */
+   /* Count all processes                                             */
 void check_max_time(PROCESS *p_process_list);
    /* Remove process that has reached its max CPU time                */
 void check_blocked(PROCESS *p_process_list);
@@ -117,35 +124,24 @@ int get_next_pid(PROCESS *p_process_list);
 /**********************************************************************/
 int main()
 {
-   PROCESS *p_next_process,     /* Points to one process              */
-           *p_process_list,     /* Points to an process list          */
-           *p_process,          /* Points to an process in the list   */
-           *p_previous_account; /* Points to previous process         */
+   PROCESS *p_process_list,     /* Points to an process list          */
+           *p_process;          /* Points to an process in the list   */
    int     clock_ticks = 1,     /* Number of clock ticks by scheduler */
-           pid = 1;
+           next_pid;
 
    p_process_list = create_process_list();
    p_process = p_process_list;
 
    printf("\n\n\n\n\n\n");
    initialize_scheduler(p_process_list);
-   printTables(p_process_list, BEFORE);
-   
-   while (get_next_pid(p_process_list) < 10)
+   for(int count = 1; count < 5; count++)
    {
-      if (count_processes(p_process_list) < 10)
-      {
-         add_process(p_process_list);
-         schedule_process(p_process_list, pid);
-      }
-
-      check_blocked(p_process_list);
-      clock_ticks++;
-      printf("\n%d\n", clock_ticks);
+      schedule_process(p_process_list);
    }
-   printf("\n%d\n", clock_ticks);
    
-   printTables(p_process_list, AFTER);
+   
+   
+   
    printf("\n\n\n\n\n\n");
    return 0;
 }
@@ -157,18 +153,20 @@ void printTables(PROCESS *p_process_list, char *p_table)
 {
    PROCESS *p_process; /* Points to an process in the process list    */
 
+   p_process = p_process_list;
+
    printf("%s SCHEDULING CPU: Next PID = %d, Number of Processes = %d\n",
-          p_table, get_next_pid(p_process_list),
-          count_processes(p_process_list));
+          p_table, get_next_pid(p_process),
+          count_processes(p_process));
    printf("PID   CPU Used   MAX Time   STATE   PRI   QUANTUM USED    BLK TIME   WAIT TKS\n");
 
-   while (p_process_list = p_process_list->p_next_process,
-          p_process_list->pid != LIST_TRAILER)
+   while (p_process = p_process->p_next_process,
+          p_process->pid != LIST_TRAILER)
    {
       printf(" %2d      %2d         %2d        %c       %d         %d             %d           %d\n",
-             p_process_list->pid, p_process_list->cpu_used, p_process_list->max_time,
-             p_process_list->state, p_process_list->priority, p_process_list->quantum_used,
-             p_process_list->block_time, p_process_list->wait_ticks);
+             p_process->pid, p_process->cpu_used, p_process->max_time,
+             p_process->state, p_process->priority, p_process->quantum_used,
+             p_process->block_time, p_process->wait_ticks);
    }
    printf("\n");
 
@@ -208,11 +206,67 @@ PROCESS* create_process_list()
 }
 
 /**********************************************************************/
-/*      Insert a new process at the beginning of the process list     */
+/*               Initialize and populate a process table              */
+/**********************************************************************/
+void initialize_scheduler(PROCESS *p_process_list)
+{
+   int counter; /* Counts the processes in the list                   */
+
+   for(counter = 5; counter >= 1; counter--)
+   {
+      insert_process(p_process_list, counter);
+   }
+
+   return;
+}
+
+/**********************************************************************/
+/*                    Check if a process is running                   */
+/**********************************************************************/
+int check_if_running(PROCESS *p_process_list)
+{
+   PROCESS *p_process;   /* Points to a process in the list           */
+   int     running_flag; /* Flag determining if process is running    */
+
+   p_process = p_process_list;
+   while (p_process->p_next_process->pid != LIST_TRAILER)
+   {
+      if(p_process->p_next_process->state == 'N')
+      {
+         running_flag = TRUE;
+         break;
+      }
+      else
+      {
+         running_flag = FALSE;
+      }
+      p_process = p_process->p_next_process;
+   }
+   
+   return running_flag;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**********************************************************************/
+/*         Insert a new process at the end of the process list        */
 /**********************************************************************/
 void insert_process(PROCESS *p_process_list, int pid)
 {
-   PROCESS *p_new_process; /* Points to a newly created process       */
+   PROCESS *p_new_process, /* Points to a newly created process       */
+           *p_process,     /* Points to a process in the list         */
+           *p_temp;        /* Temp process pointer for a swap         */
+   int     counter;        /* Counts processes in the list            */
 
    if ((p_new_process = (PROCESS *)malloc(sizeof(PROCESS))) == NULL)
    {
@@ -222,6 +276,7 @@ void insert_process(PROCESS *p_process_list, int pid)
       printf("\nProgram is aborting.");
       exit(PROCESS_ALLOC_ERR);
    }
+   
    p_new_process->p_next_process = p_process_list->p_next_process;
    p_new_process->pid = pid;
 
@@ -242,23 +297,50 @@ void insert_process(PROCESS *p_process_list, int pid)
    p_new_process->state        = INITIAL_STATE;
    p_process_list->p_next_process = p_new_process;
 
-   return;
-}
-
-/**********************************************************************/
-/*               Initialize and populate a process table              */
-/**********************************************************************/
-void initialize_scheduler(PROCESS *p_process_list)
-{
-   int process_counter;
-
-   for(process_counter = 5; process_counter >= 1; process_counter--)
+   for (counter = 1; counter <= count_processes(p_process_list);
+                                                         counter++)
    {
-      insert_process(p_process_list, process_counter);
+      p_process = p_process_list;
+      while (p_process->p_next_process->pid != LIST_TRAILER)
+      {
+         if (p_process->p_next_process->pid >
+            p_process->p_next_process->p_next_process->pid)
+         {
+            p_temp                    = p_process->p_next_process->p_next_process;
+            p_process->p_next_process->p_next_process 
+                                      = 
+               p_process->p_next_process->p_next_process->p_next_process;
+            p_temp->p_next_process    = p_process->p_next_process;
+            p_process->p_next_process = p_temp;
+         }
+         p_process = p_process->p_next_process;
+      }
    }
-
+   
    return;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /**********************************************************************/
 /*           Recalculate the priority of the runNing process          */
@@ -446,23 +528,37 @@ void sort_processes(PROCESS* p_process_list, int number_of_processes)
 /**********************************************************************/
 void schedule_process(PROCESS *p_process_list)
 {
-   PROCESS *p_process;
+   PROCESS *p_process; /* Point to a process in the list              */
+   int     counter;    /* Counts the processes in the list            */
 
-   p_process = p_process_list;
-   
-   while (p_process-> p_next_process->pid != LIST_TRAILER)
+   for (counter = 0; counter < count_processes(p_process_list); counter++)
    {
-      if(p_process->p_next_process->state == 'R')
-      {
-         p_process->p_next_process->state = 'N';
-         printTables(p_process_list, BEFORE);
-         printTables(p_process_list, AFTER);
-      }
-
-      p_process = p_process->p_next_process;
-   }
+      p_process = p_process_list;
    
+      while (p_process->p_next_process->pid != LIST_TRAILER)
+      {  
+         if (p_process->p_next_process->state != 'B' &&
+            check_if_running(p_process_list) == FALSE)
+         {
+            printTables(p_process_list, BEFORE);
+            p_process->p_next_process->state = 'N';
+            printTables(p_process_list, AFTER);
+            break;
+         }
+         else if (p_process->p_next_process->state == 'R')
+         {
+            p_process->p_next_process->wait_ticks += 1;
+            if (p_process->state == 'N')
+            {
+               p_process->cpu_used += 1;
+            } 
+         }
+         p_process = p_process->p_next_process;
+      }
+   }
 
+   
+   
    return;
 }
 
