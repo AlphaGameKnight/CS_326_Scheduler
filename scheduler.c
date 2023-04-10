@@ -176,7 +176,7 @@ PROCESS* create_process_table()
    if ((p_process_table->p_next_process = (PROCESS *)
             malloc(sizeof(PROCESS))) == NULL)
    {
-      printf("\nError number %d occurred in create_process_tablea function.",
+      printf("\nError number %d occurred in create_process_table function.",
          TRAILER_ALLOC_ERR);
       printf("\nUnable to allocate memory for trailer node.");
       printf("\nProgram is aborting.");
@@ -326,7 +326,7 @@ void print_process_table(PROCESS *p_process_table, char *p_table_time,
       printf("  %2d      %2d         %2d        %c      %2d",
              p_process->pid, p_process->cpu_used, p_process->max_time,
              p_process->state, p_process->priority);
-      printf("         %d             %d          %2d\n",
+      printf("         %d             %d         %3d\n",
              p_process->quantum_used, p_process->block_time,
              p_process->wait_ticks);
    }
