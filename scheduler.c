@@ -433,7 +433,8 @@ void sort_by_priority(PROCESS* p_process_table)
                   p_process->p_next_process->p_next_process;
                p_process->p_next_process->p_next_process 
                                          = 
-                  p_process->p_next_process->p_next_process->p_next_process;
+                  p_process->p_next_process->p_next_process->
+                                                         p_next_process;
                p_temp->p_next_process    = p_process->p_next_process;
                p_process->p_next_process = p_temp;
             }
@@ -447,17 +448,20 @@ void sort_by_priority(PROCESS* p_process_table)
                      p_process->p_next_process->p_next_process;
                   p_process->p_next_process->p_next_process 
                                             = 
-                     p_process->p_next_process->p_next_process->p_next_process;
+                     p_process->p_next_process->p_next_process->
+                                                         p_next_process;
                   p_temp->p_next_process    = p_process->p_next_process;
                   p_process->p_next_process = p_temp;
                }
                else
                {
-                  if(p_process->p_next_process->state == READY &&
+                  if(p_process->p_next_process->state    ==     READY &&
                     (p_process->p_next_process->priority ==
-                        p_process->p_next_process->p_next_process->priority) &&
+                        p_process->p_next_process->p_next_process->
+                                                            priority) &&
                     (p_process->p_next_process->pid >
-                        p_process->p_next_process->p_next_process->pid) &&
+                        p_process->p_next_process->p_next_process->
+                                                                 pid) &&
                      p_process->p_next_process->p_next_process->priority >
                                                             INITIAL_PRI)
                   {
@@ -465,8 +469,10 @@ void sort_by_priority(PROCESS* p_process_table)
                         p_process->p_next_process->p_next_process;
                      p_process->p_next_process->p_next_process 
                                                = 
-                        p_process->p_next_process->p_next_process->p_next_process;
-                     p_temp->p_next_process    = p_process->p_next_process;
+                        p_process->p_next_process->p_next_process->
+                                                         p_next_process;
+                     p_temp->p_next_process    = p_process->
+                                                         p_next_process;
                      p_process->p_next_process = p_temp;
                   }
                }
