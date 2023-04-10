@@ -29,20 +29,19 @@ int main()
    //   }
    //}
 
-   int x = 1;
-   for(int i = 0; i < 5; i++)
-   {
-      if ((rand() % 5 + 1) == 1)
-      {
-         printf("\n\nooga booga %d\n", x);
-      }
-      else
-      {
-         printf("\ndang it! %d\n\n", x);
-      }
-      x++;
-   }
-
+   //int x = 1;
+   //for(int i = 0; i < 5; i++)
+   //{
+   //   if ((rand() % 5 + 1) == 1)
+   //   {
+   //      printf("\n\nooga booga %d\n", x);
+   //   }
+   //   else
+   //   {
+   //      printf("\ndang it! %d\n\n", x);
+   //   }
+   //   x++;
+   //}
 
    return 0;
 }
